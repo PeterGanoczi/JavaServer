@@ -6,13 +6,13 @@ import com.mongodb.*;
 import com.mongodb.client.*;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.Filters;
-import org.bson.BsonArray;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.json.JSONObject;
+import org.json.simple.parser.JSONParser;
 import org.mindrot.jbcrypt.BCrypt;
 
-import java.security.SecureRandom;
+import java.io.FileReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -21,16 +21,39 @@ import java.util.Random;
 
 public class Database {
 
-    public final String uri = "mongodb://localhost:27017";
-    public final String dbName = "chatApp";
+   // public final String url = "mongodb://localhost:27017";
+    //public final String dbName = "chatApp";
+    public String url;
+    public String dbName;
+    public int port;
     public final String usersCollection = "users";
     public final String logsCollection = "usersLogs";
     public final String messageCollection = "messages";
     public static MongoDatabase database;
 
+    public void config(){
+        JSONParser parser = new JSONParser();
+        try
+        {
+            Object obj = parser.parse(new FileReader("src\\main\\java\\sample\\config.json"));
+            org.json.simple.JSONObject employeeList = (org.json.simple.JSONObject) obj;
+
+            url = (String) employeeList.get("url");
+            dbName = (String) employeeList.get("dbname");
+            String temp = String.valueOf( employeeList.get("port"));
+            //port = Integer.parseInt(temp);
+
+            url+=temp;
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+
 
     public void connection() {
-        try (MongoClient mongoClient = MongoClients.create(uri)) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
             database = mongoClient.getDatabase(dbName);
 
             //control print of connection
@@ -41,9 +64,11 @@ public class Database {
         }
     }
 
-    public void createUser(User user) {
 
-        try (MongoClient mongoClient = MongoClients.create(uri)) {
+
+    public void createUser(User user) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
             database = mongoClient.getDatabase(dbName);
 
             MongoCollection<Document> collection = database.getCollection(usersCollection);
@@ -61,7 +86,8 @@ public class Database {
     }
 
     public boolean loginUser(String login, String password) {
-        try (MongoClient mongoClient = MongoClients.create(uri)) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
             database = mongoClient.getDatabase(dbName);
 
             MongoCollection<Document> collection = database.getCollection(usersCollection);
@@ -91,7 +117,8 @@ public class Database {
     }
 
     public boolean logoutUser(String login, String token) {
-        try (MongoClient mongoClient = MongoClients.create(uri)) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
             database = mongoClient.getDatabase(dbName);
 
             MongoCollection<Document> collection = database.getCollection(usersCollection);
@@ -135,7 +162,8 @@ public class Database {
 
 
     public boolean findLogin(String login) {
-        try (MongoClient mongoClient = MongoClients.create(uri)) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
             database = mongoClient.getDatabase(dbName);
             MongoCollection<Document> collection = database.getCollection(usersCollection);
 
@@ -153,7 +181,8 @@ public class Database {
     }
 
     public User getUser(String login) {
-        try (MongoClient mongoClient = MongoClients.create(uri)) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
             database = mongoClient.getDatabase(dbName);
             MongoCollection<Document> collection = database.getCollection(usersCollection);
 
@@ -174,7 +203,8 @@ public class Database {
     }
 
     public String getUsers(String token) {
-        try (MongoClient mongoClient = MongoClients.create(uri)) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
             database = mongoClient.getDatabase(dbName);
             MongoCollection<Document> collection = database.getCollection(usersCollection);
             Document document = null;
@@ -191,7 +221,8 @@ public class Database {
     }
 
     public String getToken(String login) {
-        try (MongoClient mongoClient = MongoClients.create(uri)) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
             database = mongoClient.getDatabase(dbName);
             MongoCollection<Document> collection = database.getCollection(usersCollection);
 
@@ -208,7 +239,8 @@ public class Database {
     }
 
     public boolean checkToken(String token) {
-        try (MongoClient mongoClient = MongoClients.create(uri)) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
             database = mongoClient.getDatabase(dbName);
             MongoCollection<Document> collection = database.getCollection(usersCollection);
 
@@ -226,7 +258,8 @@ public class Database {
     }
 
     public boolean changePassword(String oldPassword, String newPassword, String login, String token){
-        try (MongoClient mongoClient = MongoClients.create(uri)) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
             database = mongoClient.getDatabase(dbName);
             MongoCollection<Document> collection = database.getCollection(usersCollection);
 
@@ -249,7 +282,8 @@ public class Database {
     }
 
     public boolean checkPassword(String login, String password) {
-        try (MongoClient mongoClient = MongoClients.create(uri)) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
             database = mongoClient.getDatabase(dbName);
             MongoCollection<Document> collection = database.getCollection(usersCollection);
 
@@ -274,7 +308,8 @@ public class Database {
     }
 
     public void createUserLog(String login, String type) {
-        try (MongoClient mongoClient = MongoClients.create(uri)) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
             database = mongoClient.getDatabase(dbName);
             MongoCollection<Document> collection = database.getCollection(logsCollection);
 
@@ -290,7 +325,8 @@ public class Database {
     }
 
     public List<String> listOfUserLogs(String login, String token) {
-        try (MongoClient mongoClient = MongoClients.create(uri)) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
             database = mongoClient.getDatabase(dbName);
             MongoCollection<Document> logCol = database.getCollection(logsCollection);
             MongoCollection<Document> userCol = database.getCollection(usersCollection);
@@ -327,13 +363,23 @@ public class Database {
                 }
                 return tem;
             }
-
             return null;
         }
     }
 
-    // connection
-    // pridavanie usera
+    public void createMessage(String from, String to, String message) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
+            database = mongoClient.getDatabase(dbName);
 
-    //robot 3T gui pre mongo
+            MongoCollection<Document> collection = database.getCollection(messageCollection);
+
+            Document doc = new Document("from", from)
+                    .append("to", to)
+                    .append("message", message);
+
+            collection.insertOne(doc);
+        }
+    }
+
 }
