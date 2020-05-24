@@ -14,6 +14,8 @@ import org.mindrot.jbcrypt.BCrypt;
 
 import java.io.FileReader;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -376,9 +378,97 @@ public class Database {
 
             Document doc = new Document("from", from)
                     .append("to", to)
-                    .append("message", message);
+                    .append("message", message)
+                    .append("time", getTime());
 
             collection.insertOne(doc);
+        }
+    }
+
+    public String getTime() {
+        DateTimeFormatter format = DateTimeFormatter.ofPattern("ddMMyy HH:mm:ss");
+        LocalDateTime time = LocalDateTime.now();
+        return format.format(time);
+
+    }
+
+    public List<String> getMessage(String login, String token ) {
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
+            database = mongoClient.getDatabase(dbName);
+
+            MongoCollection<Document> collection = database.getCollection(messageCollection);
+            MongoCollection<Document> userColl=database.getCollection(usersCollection);
+
+            Bson filter=Filters.eq("from", login);
+            FindIterable<Document> message=collection.find(filter);
+
+            BasicDBObject query=new BasicDBObject();
+            query.append("login",login);
+            query.append("token", token);
+
+            FindIterable<Document> doc=userColl.find(query);
+            List<String> temp=new ArrayList<>();
+            JSONObject obj=new JSONObject();
+
+            if (!findLogin(login) && checkToken(token)) {
+                if (doc.iterator().hasNext()) {
+                    for (Document p : message) {
+                        obj.put("from", p.getString("from"));
+                        obj.put("to", p.getString("to"));
+                        obj.put("message", p.getString("message"));
+                        obj.put("time", p.getString("time"));
+                        temp.add(obj.toString());
+                    }
+                }
+            }
+
+            return temp;
+
+
+        }
+    }
+
+    public boolean deleteUser(String login, String token){
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
+            database = mongoClient.getDatabase(dbName);
+
+            MongoCollection<Document> collection = database.getCollection(usersCollection);
+
+            BasicDBObject deleteQuery=new BasicDBObject();
+            deleteQuery.put("login",login);
+            deleteQuery.put("token",token);
+            FindIterable<Document> find=collection.find(deleteQuery);
+
+            if (!findLogin(login) && checkToken(token)){
+                if (find.iterator().hasNext()){
+                    collection.deleteOne(deleteQuery);
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+
+        }
+        return false;
+    }
+
+    public void updateUser(String lname, String fname, String login, String token){
+        config();
+        try (MongoClient mongoClient = MongoClients.create(url)) {
+            database = mongoClient.getDatabase(dbName);
+
+            MongoCollection<Document> collection = database.getCollection(usersCollection);
+
+            User temp=getUser(login);
+            BasicDBObject updateQuery=new BasicDBObject();
+            updateQuery.put("fname",temp.getFname());
+            updateQuery.put("lname",temp.getLname());
+            updateQuery.put("token",token);
+
+            collection.updateOne(updateQuery, new BasicDBObject("$set", new BasicDBObject("fname", fname).append("lname", lname)));
+
         }
     }
 

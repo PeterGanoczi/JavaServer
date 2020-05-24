@@ -205,14 +205,15 @@ public class UserController {
     }
 
     @RequestMapping(method = RequestMethod.GET, value = "/log?type={logType}")
-    public ResponseEntity<String> listOfUserLogs( @RequestHeader(name = "Authorization") String token, @PathVariable String logType) {
-        JSONObject data = new JSONObject();
+    public ResponseEntity<String> listOfUserLogs(@RequestBody String data, @RequestHeader(name = "Authorization") String token, @PathVariable String logType) {
+        JSONObject obj = new JSONObject(data);
         List<String> userLogs = new ArrayList<>();
         if (!db.checkToken(token)){
-            data.put("error", "invalid token");
+            obj.put("error", "invalid token");
             return ResponseEntity.status(400).contentType(MediaType.APPLICATION_JSON).body(data.toString());
         }
 
+        db.listOfUserLogs(obj.getString("login"), token);
 //        String login = "";
 //        for(User user : list){
 //            if( user.getToken()!=null){
@@ -233,7 +234,9 @@ public class UserController {
     @RequestMapping(method = RequestMethod.POST, value = "/message/new")
     public ResponseEntity<String> newMessage(@RequestBody String data, @RequestHeader(name = "Authorization") String token) {
         JSONObject obj = new JSONObject(data);
-        if (db.getUser(obj.getString("from")).getToken().equals(token)&& !db.findLogin(obj.getString("from")) && !db.findLogin(obj.getString("to"))) {
+        User user=db.getUser(obj.getString("from"));
+
+        if (db.getToken(user.getLogin()).equals(token) && !db.findLogin(obj.getString("from")) && !db.findLogin(obj.getString("to"))) {
 
             JSONObject message = new JSONObject();
             message.put("from", obj.getString("from"));
@@ -255,10 +258,11 @@ public class UserController {
     @RequestMapping(method= RequestMethod.GET, value = "/messages?from={fromLogin}")
     public ResponseEntity<String> getMessages(@RequestBody String data, @RequestHeader(name = "Authorization") String token, @PathVariable String fromLogin) {
 
-        org.json.JSONObject jsonObject = new org.json.JSONObject(data);
+        JSONObject obj=new JSONObject(data);
         JSONObject res = new JSONObject();
+        JSONArray arr=new JSONArray();
 
-        String login = jsonObject.getString("login");
+        String login = obj.getString("login");
         if (login == null  || !db.checkToken(token) ) {
             res.put("error", "invalid token or login");
             return ResponseEntity.status(401).contentType(MediaType.APPLICATION_JSON).body(res.toString());
@@ -266,15 +270,25 @@ public class UserController {
 
         //org.json.JSONObject message;
         JSONObject message;
-        if (jsonObject.has("login") && db.checkToken(jsonObject.getString("login"))) {
-            res.put("from", jsonObject.getString("login"));
-//            for(int i = 0; i < messages.size(); i++) {
+        if (obj.has("login") && db.checkToken(obj.getString("login"))) {
+            res.put("from", obj.getString("login"));
+            for(String messages : db.getMessage(login, token)) {
+
+                if (fromLogin==null){
+                    JSONObject temp=new JSONObject(messages);
+                    arr.put(temp);
+                } else if (!db.findLogin(fromLogin)){
+                    JSONObject temp=new JSONObject(messages);
+                    if(temp.getString("from").equals(fromLogin)){
+                        arr.put(temp);
+                    }
+
 //                message = new org.json.JSONObject(messages.get(i));
 //                if (message.getString("from").equals(fromLogin) && !fromLogin.equals("")){
 //                    res.put("message" + i, messages.get(i));
-//                }
-//            }
-            return ResponseEntity.status(201).contentType(MediaType.APPLICATION_JSON).body(res.toString());
+                }
+            }
+            return ResponseEntity.status(201).contentType(MediaType.APPLICATION_JSON).body(arr.toString());
         } else {
             res.put("error", "missing or wrong login");
             return ResponseEntity.status(401).contentType(MediaType.APPLICATION_JSON).body(res.toString());
@@ -283,8 +297,11 @@ public class UserController {
 
     @DeleteMapping(value = "/delete/{login}")
     public ResponseEntity<String> deleteUser(@RequestHeader(value = "token") String token, @PathVariable String login) {
-        if (!db.findLogin(login) && db.getUser(login).getToken().equals(token)) {
-            //list.remove(getUser(login));
+        User user=db.getUser(login);
+
+        if (!db.findLogin(login) && db.getToken(user.getLogin()).equals(token)) {
+
+            db.deleteUser(login, token);
             return ResponseEntity.status(201).contentType(MediaType.APPLICATION_JSON).body("{\"message\": \"User successfully removed\"}");
         } else {
             return ResponseEntity.status(400).contentType(MediaType.APPLICATION_JSON).body("{\"error\": \"Invalid login or token\"}");
@@ -292,18 +309,16 @@ public class UserController {
     }
 
     @PatchMapping(value = "update/{login}")
-    public ResponseEntity<String> updateLogin(@RequestBody String data, @RequestHeader String token, @PathVariable String login) {
+    public ResponseEntity<String> updateLogin(@RequestBody String data, @RequestHeader(value = "token") String token, @PathVariable String login) {
         JSONObject obj = new JSONObject(data);
+        User user=db.getUser(login);
+        String fname=obj.getString("firstname");
+        String lname=obj.getString("lastname");
 
-        if (db.getUser(login).getToken().equals(token)) {
-            if (obj.has("firstName")) {
-                db.getUser(login).setFname(obj.getString("firstName"));
-            }
+        if (!db.findLogin(login) && db.getToken(user.getLogin()).equals(token)) {
 
-            if (obj.has("lastName")) {
-                db.getUser(login).setLname(obj.getString("lastName"));
-            }
-            return ResponseEntity.status(201).contentType(MediaType.APPLICATION_JSON).body(obj.getString("firstName"+"lastName"));
+            db.updateUser(lname, fname, login, token);
+            return ResponseEntity.status(201).contentType(MediaType.APPLICATION_JSON).body("Credentials for user "+obj.getString("firstname")+" was successfuly changed");
         } else {
             return ResponseEntity.status(400).contentType(MediaType.APPLICATION_JSON).body("{\"error\": \"Invalid token or login\"}");
         }
